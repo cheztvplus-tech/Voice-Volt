@@ -1,24 +1,7 @@
 // Voice Volt - Complete Voice Cloning Application
 
-// ==================== CONFIGURATION ====================
-const CONFIG = {
-    services: {
-        minimax: {
-            name: 'MiniMax',
-            uploadUrl: 'https://api.minimax.chat/v1/files/upload',
-            ttsUrl: 'https://api.minimax.chat/v1/t2a_v2',
-            voiceCloneUrl: 'https://api.minimax.chat/v1/voice_clone',
-        },
-        elevenlabs: {
-            name: 'ElevenLabs',
-            baseUrl: 'https://api.elevenlabs.io/v1',
-        }
-    }
-};
-
-// ==================== STATE ====================
+// State
 const state = {
-    currentService: 'minimax',
     apiKey: '',
     samples: [null, null, null],
     currentRecordingIndex: null,
@@ -27,97 +10,25 @@ const state = {
     recordingStartTime: null,
     recordingTimer: null,
     voiceId: null,
-    isRecording: false,
-    audioContext: null
+    isRecording: false
 };
 
-// ==================== INITIALIZATION ====================
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Voice Volt initializing...');
-    
-    // Check for saved voice
     const savedVoiceId = localStorage.getItem('voiceVoltVoiceId');
-    const savedService = localStorage.getItem('voiceVoltService');
+    const savedKey = localStorage.getItem('voiceVoltApiKey');
     
-    if (savedVoiceId && savedService) {
+    if (savedVoiceId) {
         state.voiceId = savedVoiceId;
-        state.currentService = savedService;
+        state.apiKey = savedKey || '';
+        document.getElementById('apiKey').value = state.apiKey;
         showVoiceReady(savedVoiceId);
     }
-    
-    // Setup all event listeners
-    setupEventListeners();
 });
 
-function setupEventListeners() {
-    // Service selection
-    document.querySelectorAll('.radio-option').forEach(el => {
-        el.addEventListener('click', (e) => {
-            const service = el.dataset.service;
-            selectService(service, el);
-        });
-    });
-    
-    // Record buttons
-    document.querySelectorAll('.sample-item button').forEach((btn, index) => {
-        btn.addEventListener('click', () => recordSample(index));
-    });
-    
-    // Main record button
-    document.getElementById('recordBtn').addEventListener('click', toggleRecording);
-    
-    // Create voice button
-    document.getElementById('createVoiceBtn').addEventListener('click', createVoiceClone);
-    
-    // Mode tabs
-    document.querySelectorAll('.mode-tab').forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            const mode = e.target.dataset.mode;
-            switchMode(mode);
-        });
-    });
-    
-    // Speak button
-    const speakBtn = document.getElementById('speakBtn');
-    if (speakBtn) {
-        speakBtn.addEventListener('click', speakWithClone);
-    }
-    
-    // Speed slider
-    const speedSlider = document.getElementById('speed');
-    if (speedSlider) {
-        speedSlider.addEventListener('input', (e) => {
-            document.getElementById('speedValue').textContent = e.target.value;
-        });
-    }
-    
-    // Duration slider
-    const durationSlider = document.getElementById('noteDuration');
-    if (durationSlider) {
-        durationSlider.addEventListener('input', (e) => {
-            document.getElementById('durationValue').textContent = e.target.value;
-        });
-    }
-    
-    console.log('Event listeners setup complete');
-}
+// ==================== CALIBRATION ====================
 
-// ==================== SERVICE SELECTION ====================
-function selectService(service, element) {
-    console.log('Selecting service:', service);
-    state.currentService = service;
-    
-    // Update UI
-    document.querySelectorAll('.radio-option').forEach(el => el.classList.remove('selected'));
-    element.classList.add('selected');
-    
-    const serviceNames = { minimax: 'MiniMax', elevenlabs: 'ElevenLabs' };
-    document.getElementById('serviceName').textContent = `(${serviceNames[service]})`;
-}
-
-// ==================== VOICE CALIBRATION ====================
 function recordSample(index) {
-    console.log('Recording sample:', index);
     state.currentRecordingIndex = index;
     const texts = [
         "The quick brown fox jumps over the lazy dog.",
@@ -128,12 +39,9 @@ function recordSample(index) {
     document.getElementById('recordingText').textContent = texts[index];
     document.getElementById('recordingInterface').classList.remove('hidden');
     document.getElementById('recordingTimer').textContent = '00:00';
-    
-    document.getElementById('recordingInterface').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function toggleRecording() {
-    console.log('Toggle recording, current state:', state.isRecording);
     const btn = document.getElementById('recordBtn');
     const box = document.querySelector('.calibration-box');
     
@@ -141,16 +49,9 @@ async function toggleRecording() {
         stopRecording();
     } else {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    sampleRate: 44100,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                } 
-            });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            state.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            state.mediaRecorder = new MediaRecorder(stream);
             state.audioChunks = [];
             
             state.mediaRecorder.ondataavailable = (e) => {
@@ -171,16 +72,15 @@ async function toggleRecording() {
             btn.classList.add('recording');
             box.classList.add('recording');
             
-            state.recordingTimer = setInterval(updateRecordingTimer, 1000);
+            state.recordingTimer = setInterval(updateTimer, 1000);
             
         } catch (err) {
-            console.error('Mic error:', err);
-            showStatus('calibrationStatus', 'Error accessing microphone: ' + err.message, 'error');
+            showStatus('calibrationStatus', 'Microphone error: ' + err.message, 'error');
         }
     }
 }
 
-function updateRecordingTimer() {
+function updateTimer() {
     const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
     const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const secs = (elapsed % 60).toString().padStart(2, '0');
@@ -193,9 +93,8 @@ function stopRecording() {
         state.isRecording = false;
         clearInterval(state.recordingTimer);
         
-        const btn = document.getElementById('recordBtn');
-        btn.textContent = 'Start Recording';
-        btn.classList.remove('recording');
+        document.getElementById('recordBtn').textContent = 'Start Recording';
+        document.getElementById('recordBtn').classList.remove('recording');
         document.querySelector('.calibration-box').classList.remove('recording');
     }
 }
@@ -212,21 +111,18 @@ function saveSample(audioBlob) {
     const audio = document.createElement('audio');
     audio.src = url;
     audio.controls = true;
-    audio.style.width = '100%';
-    audio.style.marginTop = '10px';
+    audio.style.cssText = 'width: 100%; margin-top: 10px;';
     
-    const existingAudio = items[index].querySelector('audio');
-    if (existingAudio) existingAudio.remove();
-    
+    const existing = items[index].querySelector('audio');
+    if (existing) existing.remove();
     items[index].appendChild(audio);
     
     const recordedCount = state.samples.filter(s => s !== null).length;
-    const progress = (recordedCount / 3) * 100;
-    document.getElementById('calibrationProgress').style.width = `${progress}%`;
+    document.getElementById('calibrationProgress').style.width = `${(recordedCount / 3) * 100}%`;
     
     if (recordedCount === 3) {
         document.getElementById('createVoiceBtn').disabled = false;
-        showStatus('calibrationStatus', 'All samples recorded! Ready to create your voice clone.', 'success');
+        showStatus('calibrationStatus', 'All samples recorded! Click "Create My Voice Clone".', 'success');
     } else {
         showStatus('calibrationStatus', `Sample ${index + 1} recorded. Record ${3 - recordedCount} more.`, 'info');
     }
@@ -235,40 +131,26 @@ function saveSample(audioBlob) {
 }
 
 // ==================== VOICE CLONING ====================
+
 async function createVoiceClone() {
-    console.log('Creating voice clone with service:', state.currentService);
     const apiKey = document.getElementById('apiKey').value.trim();
     if (!apiKey) {
-        showStatus('calibrationStatus', 'Please enter your API key', 'error');
+        showStatus('calibrationStatus', 'Please enter your ElevenLabs API key', 'error');
         return;
     }
     
     state.apiKey = apiKey;
-    
-    // Verify service selection is working
-    console.log('Selected service:', state.currentService);
-    console.log('API Key (first 10 chars):', apiKey.substring(0, 10) + '...');
+    localStorage.setItem('voiceVoltApiKey', apiKey);
     
     document.getElementById('calibrationSection').classList.add('hidden');
     document.getElementById('processingSection').classList.remove('hidden');
     updateStep(2);
     
     try {
-        let voiceId;
-        
-        if (state.currentService === 'minimax') {
-            console.log('Using MiniMax API...');
-            voiceId = await createMiniMaxVoice();
-        } else if (state.currentService === 'elevenlabs') {
-            console.log('Using ElevenLabs API...');
-            voiceId = await createElevenLabsVoice();
-        } else {
-            throw new Error('Unknown service: ' + state.currentService);
-        }
+        const voiceId = await createElevenLabsVoice();
         
         state.voiceId = voiceId;
         localStorage.setItem('voiceVoltVoiceId', voiceId);
-        localStorage.setItem('voiceVoltService', state.currentService);
         
         setTimeout(() => {
             document.getElementById('processingSection').classList.add('hidden');
@@ -276,7 +158,6 @@ async function createVoiceClone() {
         }, 2000);
         
     } catch (err) {
-        console.error('Cloning failed:', err);
         document.getElementById('processingSection').classList.add('hidden');
         document.getElementById('calibrationSection').classList.remove('hidden');
         showStatus('calibrationStatus', 'Failed: ' + err.message, 'error');
@@ -284,108 +165,38 @@ async function createVoiceClone() {
     }
 }
 
-    async function createMiniMaxVoice() {
-    console.log('Creating MiniMax voice...');
-    
-    // Step 1: Upload audio files to MiniMax
-    const fileIds = [];
+async function createElevenLabsVoice() {
+    const formData = new FormData();
+    formData.append('name', 'VoiceVolt_' + Date.now());
     
     for (let i = 0; i < state.samples.length; i++) {
-        // Convert webm to wav first (MiniMax prefers wav)
-        const wavBlob = await convertWebmToWav(state.samples[i]);
-        
-        const formData = new FormData();
-        formData.append('file', wavBlob, `sample_${i}.wav`);
-        
-        console.log(`Uploading sample ${i+1}...`);
-        
-        try {
-            const uploadResponse = await fetch('https://api.minimax.chat/v1/files/upload', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${state.apiKey}`
-                    // Don't set Content-Type here - browser sets it with boundary for FormData
-                },
-                body: formData
-            });
-            
-            if (!uploadResponse.ok) {
-                const error = await uploadResponse.text();
-                console.error(`Upload ${i+1} failed:`, error);
-                throw new Error(`Upload failed: ${error}`);
-            }
-            
-            const uploadData = await uploadResponse.json();
-            console.log(`Upload ${i+1} response:`, uploadData);
-            
-            // MiniMax returns file_id in base_resp or directly
-            const fileId = uploadData.file_id || 
-                          (uploadData.base_resp && uploadData.base_resp.file_id);
-            
-            if (!fileId) {
-                throw new Error('No file_id in response: ' + JSON.stringify(uploadData));
-            }
-            
-            fileIds.push(fileId);
-            
-        } catch (err) {
-            console.error(`Error uploading sample ${i+1}:`, err);
-            throw err;
-        }
+        formData.append('files', state.samples[i], `sample_${i}.webm`);
     }
     
-    // Step 2: Create voice clone
-    console.log('Creating voice clone with file IDs:', fileIds);
+    const response = await fetch('https://api.elevenlabs.io/v1/voices/add', {
+        method: 'POST',
+        headers: { 'xi-api-key': state.apiKey },
+        body: formData
+    });
     
-    try {
-        const cloneResponse = await fetch('https://api.minimax.chat/v1/voice_clone', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify({
-                voice_name: 'VoiceVolt_' + Date.now(),
-                file_ids: fileIds
-            })
-        });
-        
-        if (!cloneResponse.ok) {
-            const error = await cloneResponse.text();
-            console.error('Clone failed:', error);
-            throw new Error(`Voice clone failed: ${error}`);
-        }
-        
-        const cloneData = await cloneResponse.json();
-        console.log('Clone response:', cloneData);
-        
-        // Extract voice_id from response
-        const voiceId = cloneData.voice_id || 
-                       (cloneData.base_resp && cloneData.base_resp.voice_id) ||
-                       cloneData.id;
-        
-        if (!voiceId) {
-            throw new Error('No voice_id in response: ' + JSON.stringify(cloneData));
-        }
-        
-        return voiceId;
-        
-    } catch (err) {
-        console.error('Error creating voice clone:', err);
-        throw err;
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
     }
+    
+    const data = await response.json();
+    return data.voice_id;
 }
 
-// ==================== USE CLONED VOICE ====================
+// ==================== USE VOICE ====================
+
 function showVoiceReady(voiceId) {
     document.getElementById('useVoiceSection').classList.remove('hidden');
     document.getElementById('voiceIdDisplay').textContent = voiceId.substring(0, 8) + '...';
     updateStep(3);
-    document.getElementById('calibrationSection').classList.add('hidden');
 }
 
 function switchMode(mode) {
-    console.log('Switching mode:', mode);
     document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
     event.target.classList.add('active');
     
@@ -398,25 +209,18 @@ function switchMode(mode) {
     }
 }
 
-// ==================== SPEAK WITH CLONE ====================
 async function speakWithClone() {
-    console.log('Speaking with clone...');
     const text = document.getElementById('readText').value;
     if (!text || !state.voiceId) return;
     
-    const btn = document.getElementById('speakBtn');
+    const btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Generating...';
     
     try {
-        const audioUrl = await generateSpeech(text, {
-            speed: parseFloat(document.getElementById('speed').value),
-            emotion: document.getElementById('emotion').value
-        });
-        
+        const audioUrl = await generateSpeech(text);
         playAudio(audioUrl);
         showPlaybackStatus('Playing your cloned voice!', 'success');
-        
     } catch (err) {
         showPlaybackStatus('Error: ' + err.message, 'error');
     } finally {
@@ -425,28 +229,17 @@ async function speakWithClone() {
     }
 }
 
-async function generateSpeech(text, options = {}) {
-    console.log('Generating speech with:', state.currentService);
+async function generateSpeech(text) {
+    const speed = parseFloat(document.getElementById('speed').value);
+    const emotion = document.getElementById('emotion').value;
     
-    if (state.currentService === 'minimax') {
-        return generateMiniMaxSpeech(text, options);
-    } else if (state.currentService === 'elevenlabs') {
-        return generateElevenLabsSpeech(text, options);
-    } else {
-        throw new Error('Unknown service for TTS: ' + state.currentService);
-    }
-}
-
-async function generateElevenLabsSpeech(text, options) {
     const voiceSettings = {
         stability: 0.5,
         similarity_boost: 0.75,
-        style: options.emotion === 'excited' ? 0.5 : 0,
-        use_speaker_boost: true
+        style: emotion === 'excited' ? 0.5 : 0
     };
     
-    const response = await fetch(
-        `${CONFIG.services.elevenlabs.baseUrl}/text-to-speech/${state.voiceId}`, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${state.voiceId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -459,106 +252,24 @@ async function generateElevenLabsSpeech(text, options) {
         })
     });
     
-    if (!response.ok) throw new Error('TTS generation failed');
+    if (!response.ok) throw new Error('Speech generation failed');
     
     const blob = await response.blob();
     return URL.createObjectURL(blob);
 }
 
-    async function generateMiniMaxSpeech(text, options) {
-    console.log('MiniMax TTS for text:', text.substring(0, 30) + '...');
-    
-    try {
-        const response = await fetch('https://api.minimax.chat/v1/t2a_v2', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${state.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'speech-01-turbo',
-                text: text,
-                voice_id: state.voiceId,
-                speed: options.speed || 1.0,
-                vol: 1.0,
-                pitch: 0,
-                emotion: options.emotion || 'neutral'
-            })
-        });
-        
-        console.log('TTS response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('TTS error response:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('TTS response data:', data);
-        
-        // MiniMax returns audio in hex format in data.data.audio_hex or base64 in data.data.audio
-        let audioData;
-        
-        if (data.data) {
-            if (data.data.audio) {
-                // Base64 format
-                audioData = data.data.audio;
-                const blob = base64ToBlob(audioData, 'audio/mp3');
-                return URL.createObjectURL(blob);
-            } else if (data.data.audio_hex) {
-                // Hex format - convert to base64
-                audioData = hexToBase64(data.data.audio_hex);
-                const blob = base64ToBlob(audioData, 'audio/mp3');
-                return URL.createObjectURL(blob);
-            } else if (data.data.audio_url) {
-                // URL format
-                return data.data.audio_url;
-            }
-        }
-        
-        throw new Error('No audio data found in response: ' + JSON.stringify(data));
-        
-    } catch (err) {
-        console.error('MiniMax TTS error:', err);
-        throw err;
-    }
-}
-
-function mapEmotionToMiniMax(emotion) {
-    // Map our emotions to MiniMax format
-    const mapping = {
-        'neutral': 'neutral',
-        'happy': 'happy',
-        'sad': 'sad',
-        'angry': 'angry',
-        'excited': 'excited'
-    };
-    return mapping[emotion] || 'neutral';
-}
-
-function base64ToBlob(base64, type) {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: type });
-}
-
 // ==================== SINGING ====================
+
 async function singNote(note) {
-    console.log('Singing note:', note);
     const noteNames = { 'C4': 'Do', 'D4': 'Re', 'E4': 'Mi', 'F4': 'Fa', 'G4': 'Sol', 'A4': 'La', 'B4': 'Si', 'C5': 'Do' };
     document.getElementById('currentNote').textContent = noteNames[note] || note;
     
     const text = document.getElementById('singText').value || 'La';
     
     try {
-        const audioUrl = await generateSpeech(text, { speed: 0.8 });
-        const pitchMultiplier = getPitchMultiplier(note);
-        await playWithPitchShift(audioUrl, pitchMultiplier);
+        const audioUrl = await generateSpeech(text);
+        const pitch = getPitchMultiplier(note);
+        playWithPitch(audioUrl, pitch);
     } catch (err) {
         showPlaybackStatus('Singing error: ' + err.message, 'error');
     }
@@ -575,21 +286,18 @@ async function singScale() {
 }
 
 function getPitchMultiplier(note) {
-    const noteFreqs = {
-        'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
-        'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25
-    };
-    const targetFreq = noteFreqs[note] || 440;
-    return targetFreq / 440.0;
+    const freqs = { 'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25 };
+    return (freqs[note] || 440) / 440;
 }
 
-async function playWithPitchShift(audioUrl, pitchMultiplier) {
+function playWithPitch(audioUrl, pitch) {
     const audio = new Audio(audioUrl);
-    audio.playbackRate = pitchMultiplier;
+    audio.playbackRate = pitch;
     audio.play();
 }
 
 // ==================== UTILITIES ====================
+
 function updateStep(stepNum) {
     document.querySelectorAll('.step').forEach((el, idx) => {
         el.classList.remove('active', 'completed');
@@ -600,60 +308,21 @@ function updateStep(stepNum) {
 
 function showStatus(elementId, message, type) {
     const el = document.getElementById(elementId);
-    if (!el) return;
-    el.className = type === 'success' ? 'success-msg' : type === 'error' ? 'error-msg' : 'warning';
+    el.className = type === 'success' ? 'success-msg' : 'error-msg';
     el.textContent = message;
     el.classList.remove('hidden');
 }
 
 function showPlaybackStatus(message, type) {
     const el = document.getElementById('playbackStatus');
-    if (!el) return;
     el.className = type === 'success' ? 'success-msg' : 'error-msg';
     el.textContent = message;
 }
 
 function playAudio(url) {
-    const audio = new Audio(url);
-    audio.play();
+    new Audio(url).play();
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-    // Convert webm to wav (MiniMax prefers wav)
-async function convertWebmToWav(webmBlob) {
-    // For now, return as-is and let MiniMax handle it, or use a library like lamejs
-    // MiniMax actually accepts webm too, so we can skip this for now
-    return webmBlob;
-}
-
-// Convert hex to base64
-function hexToBase64(hexString) {
-    const hexBytes = hexString.match(/.{1,2}/g);
-    const byteArray = hexBytes.map(byte => parseInt(byte, 16));
-    const binaryString = String.fromCharCode.apply(null, byteArray);
-    return btoa(binaryString);
-}
-
-// Base64 to Blob (improved version)
-function base64ToBlob(base64, type) {
-    try {
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        return new Blob([byteArray], { type: type });
-    } catch (err) {
-        console.error('base64ToBlob error:', err);
-        throw new Error('Failed to decode audio data');
-    }
-}
-
-// ==================== SERVICE WORKER ====================
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(console.error);
 }
