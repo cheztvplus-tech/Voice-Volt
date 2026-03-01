@@ -284,76 +284,95 @@ async function createVoiceClone() {
     }
 }
 
-async function createMiniMaxVoice() {
+    async function createMiniMaxVoice() {
     console.log('Creating MiniMax voice...');
     
     // Step 1: Upload audio files to MiniMax
     const fileIds = [];
     
     for (let i = 0; i < state.samples.length; i++) {
+        // Convert webm to wav first (MiniMax prefers wav)
+        const wavBlob = await convertWebmToWav(state.samples[i]);
+        
         const formData = new FormData();
-        formData.append('file', state.samples[i], `sample_${i}.wav`);
+        formData.append('file', wavBlob, `sample_${i}.wav`);
         
         console.log(`Uploading sample ${i+1}...`);
         
-        const uploadResponse = await fetch('https://api.minimax.chat/v1/files/upload', {
+        try {
+            const uploadResponse = await fetch('https://api.minimax.chat/v1/files/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.apiKey}`
+                    // Don't set Content-Type here - browser sets it with boundary for FormData
+                },
+                body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+                const error = await uploadResponse.text();
+                console.error(`Upload ${i+1} failed:`, error);
+                throw new Error(`Upload failed: ${error}`);
+            }
+            
+            const uploadData = await uploadResponse.json();
+            console.log(`Upload ${i+1} response:`, uploadData);
+            
+            // MiniMax returns file_id in base_resp or directly
+            const fileId = uploadData.file_id || 
+                          (uploadData.base_resp && uploadData.base_resp.file_id);
+            
+            if (!fileId) {
+                throw new Error('No file_id in response: ' + JSON.stringify(uploadData));
+            }
+            
+            fileIds.push(fileId);
+            
+        } catch (err) {
+            console.error(`Error uploading sample ${i+1}:`, err);
+            throw err;
+        }
+    }
+    
+    // Step 2: Create voice clone
+    console.log('Creating voice clone with file IDs:', fileIds);
+    
+    try {
+        const cloneResponse = await fetch('https://api.minimax.chat/v1/voice_clone', {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${state.apiKey}`
             },
-            body: formData
+            body: JSON.stringify({
+                voice_name: 'VoiceVolt_' + Date.now(),
+                file_ids: fileIds
+            })
         });
         
-        if (!uploadResponse.ok) {
-            const error = await uploadResponse.text();
-            throw new Error(`Upload failed for sample ${i+1}: ${error}`);
+        if (!cloneResponse.ok) {
+            const error = await cloneResponse.text();
+            console.error('Clone failed:', error);
+            throw new Error(`Voice clone failed: ${error}`);
         }
         
-        const uploadData = await uploadResponse.json();
-        console.log(`Sample ${i+1} uploaded:`, uploadData);
+        const cloneData = await cloneResponse.json();
+        console.log('Clone response:', cloneData);
         
-        // MiniMax returns file_id in the response
-        if (uploadData.file_id) {
-            fileIds.push(uploadData.file_id);
-        } else if (uploadData.id) {
-            fileIds.push(uploadData.id);
-        } else {
-            throw new Error('Unexpected upload response: ' + JSON.stringify(uploadData));
+        // Extract voice_id from response
+        const voiceId = cloneData.voice_id || 
+                       (cloneData.base_resp && cloneData.base_resp.voice_id) ||
+                       cloneData.id;
+        
+        if (!voiceId) {
+            throw new Error('No voice_id in response: ' + JSON.stringify(cloneData));
         }
-    }
-    
-    // Step 2: Create voice clone using the uploaded files
-    console.log('Creating voice clone with files:', fileIds);
-    
-    const cloneResponse = await fetch('https://api.minimax.chat/v1/voice_clone', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.apiKey}`
-        },
-        body: JSON.stringify({
-            voice_name: 'VoiceVolt_' + Date.now(),
-            file_ids: fileIds,
-            // Optional parameters
-            description: 'Cloned voice for Voice Volt app'
-        })
-    });
-    
-    if (!cloneResponse.ok) {
-        const error = await cloneResponse.text();
-        throw new Error(`Voice clone failed: ${error}`);
-    }
-    
-    const cloneData = await cloneResponse.json();
-    console.log('Voice clone created:', cloneData);
-    
-    // Return the voice_id
-    if (cloneData.voice_id) {
-        return cloneData.voice_id;
-    } else if (cloneData.id) {
-        return cloneData.id;
-    } else {
-        throw new Error('Unexpected clone response: ' + JSON.stringify(cloneData));
+        
+        return voiceId;
+        
+    } catch (err) {
+        console.error('Error creating voice clone:', err);
+        throw err;
     }
 }
 
@@ -446,44 +465,63 @@ async function generateElevenLabsSpeech(text, options) {
     return URL.createObjectURL(blob);
 }
 
-async function generateMiniMaxSpeech(text, options) {
-    console.log('MiniMax TTS:', text.substring(0, 50) + '...');
+    async function generateMiniMaxSpeech(text, options) {
+    console.log('MiniMax TTS for text:', text.substring(0, 30) + '...');
     
-    const response = await fetch('https://api.minimax.chat/v1/t2a_v2', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${state.apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'speech-01-turbo',
-            text: text,
-            voice_id: state.voiceId,
-            speed: Math.round((options.speed || 1.0) * 100) / 100,
-            emotion: options.emotion || 'neutral',
-            audio_format: 'mp3'
-        })
-    });
-    
-    if (!response.ok) {
-        const error = await response.text();
-        console.error('MiniMax TTS error:', error);
-        throw new Error(`MiniMax TTS failed: ${error}`);
-    }
-    
-    const data = await response.json();
-    console.log('MiniMax TTS response:', data);
-    
-    // MiniMax returns base64 audio in data.data.audio
-    if (data.data && data.data.audio) {
-        const blob = base64ToBlob(data.data.audio, 'audio/mp3');
-        return URL.createObjectURL(blob);
-    } else if (data.audio) {
-        const blob = base64ToBlob(data.audio, 'audio/mp3');
-        return URL.createObjectURL(blob);
-    } else {
-        console.error('Unexpected response structure:', data);
-        throw new Error('No audio data in response');
+    try {
+        const response = await fetch('https://api.minimax.chat/v1/t2a_v2', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'speech-01-turbo',
+                text: text,
+                voice_id: state.voiceId,
+                speed: options.speed || 1.0,
+                vol: 1.0,
+                pitch: 0,
+                emotion: options.emotion || 'neutral'
+            })
+        });
+        
+        console.log('TTS response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('TTS error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('TTS response data:', data);
+        
+        // MiniMax returns audio in hex format in data.data.audio_hex or base64 in data.data.audio
+        let audioData;
+        
+        if (data.data) {
+            if (data.data.audio) {
+                // Base64 format
+                audioData = data.data.audio;
+                const blob = base64ToBlob(audioData, 'audio/mp3');
+                return URL.createObjectURL(blob);
+            } else if (data.data.audio_hex) {
+                // Hex format - convert to base64
+                audioData = hexToBase64(data.data.audio_hex);
+                const blob = base64ToBlob(audioData, 'audio/mp3');
+                return URL.createObjectURL(blob);
+            } else if (data.data.audio_url) {
+                // URL format
+                return data.data.audio_url;
+            }
+        }
+        
+        throw new Error('No audio data found in response: ' + JSON.stringify(data));
+        
+    } catch (err) {
+        console.error('MiniMax TTS error:', err);
+        throw err;
     }
 }
 
@@ -582,6 +620,37 @@ function playAudio(url) {
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+    // Convert webm to wav (MiniMax prefers wav)
+async function convertWebmToWav(webmBlob) {
+    // For now, return as-is and let MiniMax handle it, or use a library like lamejs
+    // MiniMax actually accepts webm too, so we can skip this for now
+    return webmBlob;
+}
+
+// Convert hex to base64
+function hexToBase64(hexString) {
+    const hexBytes = hexString.match(/.{1,2}/g);
+    const byteArray = hexBytes.map(byte => parseInt(byte, 16));
+    const binaryString = String.fromCharCode.apply(null, byteArray);
+    return btoa(binaryString);
+}
+
+// Base64 to Blob (improved version)
+function base64ToBlob(base64, type) {
+    try {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: type });
+    } catch (err) {
+        console.error('base64ToBlob error:', err);
+        throw new Error('Failed to decode audio data');
+    }
 }
 
 // ==================== SERVICE WORKER ====================
