@@ -452,36 +452,38 @@ async function generateMiniMaxSpeech(text, options) {
     const response = await fetch('https://api.minimax.chat/v1/t2a_v2', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.apiKey}`
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             model: 'speech-01-turbo',
             text: text,
             voice_id: state.voiceId,
-            speed: options.speed || 1.0,
-            // MiniMax uses different emotion mapping
-            emotion: mapEmotionToMiniMax(options.emotion),
+            speed: Math.round((options.speed || 1.0) * 100) / 100,
+            emotion: options.emotion || 'neutral',
             audio_format: 'mp3'
         })
     });
     
     if (!response.ok) {
         const error = await response.text();
+        console.error('MiniMax TTS error:', error);
         throw new Error(`MiniMax TTS failed: ${error}`);
     }
     
     const data = await response.json();
     console.log('MiniMax TTS response:', data);
     
-    // MiniMax returns audio in data.audio_data (base64) or data.audio_url
-    if (data.audio_data) {
-        const blob = base64ToBlob(data.audio_data, 'audio/mp3');
+    // MiniMax returns base64 audio in data.data.audio
+    if (data.data && data.data.audio) {
+        const blob = base64ToBlob(data.data.audio, 'audio/mp3');
         return URL.createObjectURL(blob);
-    } else if (data.audio_url) {
-        return data.audio_url;
+    } else if (data.audio) {
+        const blob = base64ToBlob(data.audio, 'audio/mp3');
+        return URL.createObjectURL(blob);
     } else {
-        throw new Error('Unexpected TTS response: ' + JSON.stringify(data));
+        console.error('Unexpected response structure:', data);
+        throw new Error('No audio data in response');
     }
 }
 
@@ -498,12 +500,13 @@ function mapEmotionToMiniMax(emotion) {
 }
 
 function base64ToBlob(base64, type) {
-    const binary = atob(base64);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        array[i] = binary.charCodeAt(i);
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    return new Blob([array], { type: type });
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: type });
 }
 
 // ==================== SINGING ====================
