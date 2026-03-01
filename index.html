@@ -4,42 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Volt</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="6366f1">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1e1b4b 50%, #6366f1 100%);
+            background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #8b5cf6 100%);
             min-height: 100vh;
             color: white;
             padding: 20px;
         }
-
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 2rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .subtitle {
-            text-align: center;
-            opacity: 0.8;
-            margin-bottom: 30px;
-            font-size: 1rem;
-        }
-
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; font-size: 2rem; }
+        .subtitle { text-align: center; opacity: 0.8; margin-bottom: 30px; }
         .card {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -47,487 +23,157 @@
             padding: 25px;
             margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.2);
-            animation: fadeIn 0.5s ease;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h2 {
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .step-indicator {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        .step {
-            flex: 1;
-            text-align: center;
-            padding: 15px;
-            opacity: 0.5;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .step.active {
-            opacity: 1;
-            font-weight: bold;
-        }
-
-        .step.completed {
-            opacity: 1;
-            color: #4ade80;
-        }
-
-        .step::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 30px;
-            height: 3px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-        }
-
-        .step.active::after {
-            background: #f472b6;
-        }
-
-        .step.completed::after {
-            background: #4ade80;
-        }
-
-        .calibration-box {
-            background: rgba(0,0,0,0.3);
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            margin: 20px 0;
-            border: 2px dashed rgba(255,255,255,0.3);
-        }
-
-        .calibration-box.recording {
-            border-color: #f472b6;
-            background: rgba(244, 114, 182, 0.1);
-            animation: pulse-border 1.5s infinite;
-        }
-
-        @keyframes pulse-border {
-            0%, 100% { border-color: rgba(244, 114, 182, 0.3); }
-            50% { border-color: rgba(244, 114, 182, 1); }
-        }
-
-        .sample-text {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            font-style: italic;
-            min-height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
+        h2 { margin-bottom: 15px; font-size: 1.3rem; }
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .step { flex: 1; text-align: center; padding: 15px; opacity: 0.5; }
+        .step.active { opacity: 1; font-weight: bold; }
+        .step.completed { opacity: 1; color: #4ade80; }
         .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 20px 0;
+            width: 100%; height: 8px; background: rgba(255,255,255,0.2);
+            border-radius: 4px; overflow: hidden; margin: 20px 0;
         }
-
         .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #f472b6, #8b5cf6);
-            width: 0%;
-            transition: width 0.3s;
+            height: 100%; background: linear-gradient(90deg, #f472b6, #8b5cf6);
+            width: 0%; transition: width 0.3s;
         }
-
         button {
             background: linear-gradient(135deg, #f472b6 0%, #8b5cf6 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: 100%;
-            margin-bottom: 10px;
-            position: relative;
-            overflow: hidden;
+            color: white; border: none; padding: 15px 30px;
+            border-radius: 50px; font-size: 16px; font-weight: bold;
+            cursor: pointer; width: 100%; margin-bottom: 10px;
         }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
+        button:hover { transform: translateY(-2px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         button.recording {
             background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
             animation: pulse 1.5s infinite;
         }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        textarea, input[type="text"], input[type="password"] {
+            width: 100%; padding: 15px; border: none; border-radius: 12px;
+            font-size: 16px; margin-bottom: 15px;
         }
-
-        .mic-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            display: block;
+        .samples-list { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
+        .sample-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px;
         }
-
-        .timer {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 10px 0;
-            font-family: monospace;
+        .sample-item.recorded { background: rgba(74, 222, 128, 0.2); }
+        .sample-number {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: rgba(255,255,255,0.2); display: flex;
+            align-items: center; justify-content: center; font-weight: bold;
         }
-
+        .sample-item.recorded .sample-number { background: #4ade80; color: #1f2937; }
+        .calibration-box {
+            background: rgba(0,0,0,0.3); border-radius: 15px;
+            padding: 30px; text-align: center; margin: 20px 0;
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+        .calibration-box.recording { border-color: #f472b6; animation: pulse-border 1.5s infinite; }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(244, 114, 182, 0.3); }
+            50% { border-color: rgba(244, 114, 182, 1); }
+        }
+        .mic-icon { font-size: 3rem; margin-bottom: 15px; display: block; }
+        .timer { font-size: 2rem; font-weight: bold; margin: 10px 0; font-family: monospace; }
+        .sample-text { font-size: 1.2rem; line-height: 1.6; margin-bottom: 20px; font-style: italic; }
         .voice-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 15px;
-            background: rgba(74, 222, 128, 0.2);
-            border-radius: 10px;
-            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+            padding: 15px; background: rgba(74, 222, 128, 0.2);
+            border-radius: 10px; margin-bottom: 20px;
         }
-
-        .voice-status.not-ready {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .voice-status.processing {
-            background: rgba(251, 191, 36, 0.2);
-        }
-
+        .voice-status.not-ready { background: rgba(255,255,255,0.1); }
         .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4ade80;
-            box-shadow: 0 0 10px #4ade80;
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #4ade80; box-shadow: 0 0 10px #4ade80;
         }
-
-        .voice-status.not-ready .status-dot {
-            background: #9ca3af;
-            box-shadow: none;
+        .voice-status.not-ready .status-dot { background: #9ca3af; box-shadow: none; }
+        .mode-tabs {
+            display: flex; gap: 5px; margin-bottom: 20px;
+            background: rgba(0,0,0,0.2); padding: 5px; border-radius: 12px;
         }
-
-        .voice-status.processing .status-dot {
-            background: #fbbf24;
-            box-shadow: 0 0 10px #fbbf24;
-            animation: blink 1s infinite;
+        .mode-tab {
+            flex: 1; padding: 12px; text-align: center;
+            border-radius: 8px; cursor: pointer;
         }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        textarea {
-            width: 100%;
-            height: 120px;
-            padding: 15px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            resize: vertical;
-            margin-bottom: 15px;
-            font-family: inherit;
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
+        .mode-tab.active { background: rgba(255,255,255,0.2); }
+        .sing-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .sing-btn { padding: 20px; font-size: 1.5rem; background: rgba(255,255,255,0.1); }
+        .sing-btn:hover { background: rgba(244, 114, 182, 0.3); }
+        .note-display { text-align: center; font-size: 3rem; margin: 20px 0; min-height: 60px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; opacity: 0.9; }
         input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.3);
-            outline: none;
-            -webkit-appearance: none;
+            width: 100%; height: 6px; border-radius: 3px;
+            background: rgba(255,255,255,0.3); outline: none; -webkit-appearance: none;
         }
-
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: white;
-            cursor: pointer;
+            -webkit-appearance: none; width: 20px; height: 20px;
+            border-radius: 50%; background: white; cursor: pointer;
         }
-
-        select {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            font-size: 14px;
-            background: white;
-            color: #333;
-        }
-
-        .api-input {
-            background: rgba(0,0,0,0.2);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-
-        input[type="password"], input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .radio-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
+        select { width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 14px; }
+        .api-input { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .radio-group { display: flex; gap: 10px; margin-bottom: 15px; }
         .radio-option {
-            flex: 1;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
+            flex: 1; padding: 10px; background: rgba(255,255,255,0.1);
+            border-radius: 8px; text-align: center; cursor: pointer;
             border: 2px solid transparent;
         }
-
-        .radio-option.selected {
-            background: rgba(244, 114, 182, 0.3);
-            border-color: #f472b6;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .samples-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin: 15px 0;
-        }
-
-        .sample-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-        }
-
-        .sample-item.recorded {
-            background: rgba(74, 222, 128, 0.2);
-        }
-
-        .sample-number {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .sample-item.recorded .sample-number {
-            background: #4ade80;
-            color: #1f2937;
-        }
-
-        audio {
-            width: 100%;
-            margin-top: 10px;
-            border-radius: 8px;
-        }
-
-        .warning {
-            background: rgba(251, 191, 36, 0.2);
-            border-left: 4px solid #fbbf24;
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
+        .radio-option.selected { background: rgba(244, 114, 182, 0.3); border-color: #f472b6; }
+        .hidden { display: none !important; }
         .success-msg {
-            background: rgba(74, 222, 128, 0.2);
-            border-left: 4px solid #4ade80;
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 15px;
+            background: rgba(74, 222, 128, 0.2); border-left: 4px solid #4ade80;
+            padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 15px;
         }
-
         .error-msg {
-            background: rgba(239, 68, 68, 0.2);
-            border-left: 4px solid #ef4444;
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 15px;
+            background: rgba(239, 68, 68, 0.2); border-left: 4px solid #ef4444;
+            padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 15px;
         }
-
-        .mode-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 20px;
-            background: rgba(0,0,0,0.2);
-            padding: 5px;
-            border-radius: 12px;
-        }
-
-        .mode-tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .mode-tab.active {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .sing-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .sing-btn {
-            padding: 20px;
-            font-size: 1.5rem;
-            background: rgba(255,255,255,0.1);
-        }
-
-        .sing-btn:hover {
-            background: rgba(244, 114, 182, 0.3);
-        }
-
-        .note-display {
-            text-align: center;
-            font-size: 3rem;
-            margin: 20px 0;
-            min-height: 60px;
-        }
+        audio { width: 100%; margin-top: 10px; border-radius: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>⚡ Voice Volt</h1>
-        <p class="subtitle">Power up your voice: read, sing, and clone with AI</p>
+        <p class="subtitle">Power up your voice: read, sing, and clone</p>
 
-        <!-- Step Indicator -->
         <div class="step-indicator">
-            <div class="step active" id="step1">
-                <div>1</div>
-                <small>Calibrate</small>
-            </div>
-            <div class="step" id="step2">
-                <div>2</div>
-                <small>Charge</small>
-            </div>
-            <div class="step" id="step3">
-                <div>3</div>
-                <small>Use Voice</small>
-            </div>
+            <div class="step active" id="step1"><div>1</div><small>Calibrate</small></div>
+            <div class="step" id="step2"><div>2</div><small>Charge</small></div>
+            <div class="step" id="step3"><div>3</div><small>Use Voice</small></div>
         </div>
 
-        <!-- STEP 1: VOICE CALIBRATION -->
+        <!-- STEP 1: CALIBRATION -->
         <div id="calibrationSection" class="card">
             <h2>🎯 Voice Calibration</h2>
-            <p>Record 3 voice samples so the AI can learn your voice. Read each text clearly.</p>
+            <p>Record 3 voice samples so the AI can learn your voice.</p>
 
             <div class="api-input">
-                <label><strong>Choose AI Service:</strong></label>
-                <div class="radio-group">
-                    <div class="radio-option selected" onclick="selectService('minimax')">
-                        <div>🆓 MiniMax</div>
-                        <small>Free tier available</small>
-                    </div>
-                    <div class="radio-option" onclick="selectService('elevenlabs')">
-                        <div>⭐ ElevenLabs</div>
-                        <small>Higher quality</small>
-                    </div>
-                </div>
-                
-                <div id="apiKeyInput">
-                    <label>API Key <span id="serviceName">(MiniMax)</span>:</label>
-                    <input type="password" id="apiKey" placeholder="Enter your API key">
-                    <small style="opacity: 0.8;">Your key stays in your browser only</small>
-                </div>
+                <label><strong>API Key:</strong></label>
+                <input type="password" id="apiKey" placeholder="Enter ElevenLabs API Key">
+                <small>Get free key at elevenlabs.io</small>
             </div>
 
-            <div class="progress-bar">
-                <div class="progress-fill" id="calibrationProgress" style="width: 0%"></div>
-            </div>
+            <div class="progress-bar"><div class="progress-fill" id="calibrationProgress" style="width: 0%"></div></div>
 
             <div class="samples-list" id="samplesList">
                 <div class="sample-item" data-index="0">
                     <div class="sample-number">1</div>
                     <div style="flex: 1;">"The quick brown fox jumps over the lazy dog."</div>
-                    <button onclick="recordSample(0)" style="width: auto; padding: 8px 15px; margin: 0;">Record</button>
+                    <button onclick="recordSample(0)" style="width: auto; padding: 8px 15px;">Record</button>
                 </div>
                 <div class="sample-item" data-index="1">
                     <div class="sample-number">2</div>
                     <div style="flex: 1;">"Hello, this is my voice being calibrated for cloning."</div>
-                    <button onclick="recordSample(1)" style="width: auto; padding: 8px 15px; margin: 0;">Record</button>
+                    <button onclick="recordSample(1)" style="width: auto; padding: 8px 15px;">Record</button>
                 </div>
                 <div class="sample-item" data-index="2">
                     <div class="sample-number">3</div>
                     <div style="flex: 1;">"I can read books, sing songs, and speak in my own cloned voice."</div>
-                    <button onclick="recordSample(2)" style="width: auto; padding: 8px 15px; margin: 0;">Record</button>
+                    <button onclick="recordSample(2)" style="width: auto; padding: 8px 15px;">Record</button>
                 </div>
             </div>
 
@@ -536,59 +182,40 @@
                 <div class="sample-text" id="recordingText">Read this text...</div>
                 <div class="timer" id="recordingTimer">00:00</div>
                 <button id="recordBtn" onclick="toggleRecording()">Start Recording</button>
-                <div style="margin-top: 10px; font-size: 14px; opacity: 0.8;">
-                    Minimum 10 seconds recommended
-                </div>
             </div>
 
-            <button id="createVoiceBtn" onclick="createVoiceClone()" disabled>
-                ✨ Create My Voice Clone
-            </button>
-            
+            <button id="createVoiceBtn" onclick="createVoiceClone()" disabled>✨ Create My Voice Clone</button>
             <div id="calibrationStatus"></div>
         </div>
 
-        <!-- STEP 2: PROCESSING (Hidden initially) -->
+        <!-- STEP 2: PROCESSING -->
         <div id="processingSection" class="card hidden">
             <h2>⚙️ Creating Your Voice</h2>
-            <div class="voice-status processing">
-                <div class="status-dot"></div>
-                <div>
-                    <strong>Processing your voice...</strong><br>
-                    <small>This takes 30-60 seconds. Don't close the page.</small>
-                </div>
-            </div>
             <div style="text-align: center; padding: 40px;">
                 <div style="font-size: 4rem; animation: pulse 2s infinite;">🧬</div>
                 <p style="margin-top: 20px;">Training AI model on your voice samples...</p>
             </div>
         </div>
 
-        <!-- STEP 3: USE YOUR VOICE (Hidden initially) -->
+        <!-- STEP 3: USE VOICE -->
         <div id="useVoiceSection" class="card hidden">
             <h2>🎤 Your Cloned Voice is Ready!</h2>
-            
-            <div class="voice-status" id="voiceReadyStatus">
+            <div class="voice-status">
                 <div class="status-dot"></div>
-                <div>
-                    <strong>Voice ID:</strong> <span id="voiceIdDisplay">-</span><br>
-                    <small>Ready to read and sing</small>
-                </div>
+                <div><strong>Voice ID:</strong> <span id="voiceIdDisplay">-</span></div>
             </div>
 
             <div class="mode-tabs">
-                <div class="mode-tab active" data-mode="read">📖 Read</div>
-                <div class="mode-tab" data-mode="sing">🎵 Sing</div>
+                <div class="mode-tab active" onclick="switchMode('read')">📖 Read</div>
+                <div class="mode-tab" onclick="switchMode('sing')">🎵 Sing</div>
             </div>
 
-            <!-- READ MODE -->
             <div id="readMode">
-                <textarea id="readText" placeholder="Type anything and I'll read it in your voice...">Hello! This is my cloned voice speaking. I can read any text you type here.</textarea>
-                
+                <textarea id="readText" placeholder="Type anything and I'll read it in your voice...">Hello! This is my cloned voice speaking.</textarea>
                 <div class="controls">
                     <div class="control-group">
                         <label>Speed: <span id="speedValue">1.0</span>x</label>
-                        <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" oninput="updateSpeed(this.value)">
+                        <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" oninput="document.getElementById('speedValue').textContent = this.value">
                     </div>
                     <div class="control-group">
                         <label>Emotion</label>
@@ -601,16 +228,12 @@
                         </select>
                     </div>
                 </div>
-
-                <button id="speakBtn">🔊 Read with My Voice</button>
+                <button onclick="speakWithClone()">🔊 Read with My Voice</button>
             </div>
 
-            <!-- SING MODE -->
             <div id="singMode" class="hidden">
                 <p style="margin-bottom: 15px;">Click notes to make your cloned voice sing!</p>
-                
                 <div class="note-display" id="currentNote">♪</div>
-                
                 <div class="sing-controls">
                     <button class="sing-btn" onclick="singNote('C4')">Do</button>
                     <button class="sing-btn" onclick="singNote('D4')">Re</button>
@@ -622,29 +245,13 @@
                     <button class="sing-btn" onclick="singNote('C5')">Do</button>
                     <button class="sing-btn" onclick="singScale()">🎹 Scale</button>
                 </div>
-
                 <div class="control-group" style="margin-top: 20px;">
-                    <label>Sing Text (syllables work best):</label>
-                    <input type="text" id="singText" value="La la la" style="width: 100%; padding: 12px; border-radius: 8px; border: none;">
-                </div>
-
-                <div class="controls">
-                    <div class="control-group">
-                        <label>Note Duration: <span id="durationValue">0.5</span>s</label>
-                        <input type="range" id="noteDuration" min="0.2" max="2" step="0.1" value="0.5" oninput="updateDuration(this.value)">
-                    </div>
-                    <div class="control-group">
-                        <label>Vibrato</label>
-                        <select id="vibrato">
-                            <option value="0">None</option>
-                            <option value="0.1">Light</option>
-                            <option value="0.3">Strong</option>
-                        </select>
-                    </div>
+                    <label>Sing Text:</label>
+                    <input type="text" id="singText" value="La la la">
                 </div>
             </div>
 
-            <div id="playbackStatus" style="margin-top: 15px;"></div>
+            <div id="playbackStatus"></div>
         </div>
     </div>
 
