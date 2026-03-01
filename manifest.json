@@ -1,7 +1,7 @@
 {
-  "name": "My Voice Clone",
-  "short_name": "VoiceClone",
-  "description": "Clone your voice and make it read or sing",
+  "name": "Voice Volt",
+  "short_name": "VoiceVolt",
+  "description": "Power up your voice: clone, read, and sing",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e1b4b",
