@@ -577,8 +577,8 @@
             </div>
 
             <div class="mode-tabs">
-                <div class="mode-tab active" onclick="switchMode('read')">📖 Read</div>
-                <div class="mode-tab" onclick="switchMode('sing')">🎵 Sing</div>
+                <div class="mode-tab active" data-mode="read">📖 Read</div>
+                <div class="mode-tab" data-mode="sing">🎵 Sing</div>
             </div>
 
             <!-- READ MODE -->
@@ -602,7 +602,7 @@
                     </div>
                 </div>
 
-                <button onclick="speakWithClone()">🔊 Read with My Voice</button>
+                <button id="speakBtn">🔊 Read with My Voice</button>
             </div>
 
             <!-- SING MODE -->
