@@ -236,7 +236,7 @@ function saveSample(audioBlob) {
 
 // ==================== VOICE CLONING ====================
 async function createVoiceClone() {
-    console.log('Creating voice clone...');
+    console.log('Creating voice clone with service:', state.currentService);
     const apiKey = document.getElementById('apiKey').value.trim();
     if (!apiKey) {
         showStatus('calibrationStatus', 'Please enter your API key', 'error');
@@ -244,6 +244,10 @@ async function createVoiceClone() {
     }
     
     state.apiKey = apiKey;
+    
+    // Verify service selection is working
+    console.log('Selected service:', state.currentService);
+    console.log('API Key (first 10 chars):', apiKey.substring(0, 10) + '...');
     
     document.getElementById('calibrationSection').classList.add('hidden');
     document.getElementById('processingSection').classList.remove('hidden');
@@ -253,9 +257,13 @@ async function createVoiceClone() {
         let voiceId;
         
         if (state.currentService === 'minimax') {
+            console.log('Using MiniMax API...');
             voiceId = await createMiniMaxVoice();
-        } else {
+        } else if (state.currentService === 'elevenlabs') {
+            console.log('Using ElevenLabs API...');
             voiceId = await createElevenLabsVoice();
+        } else {
+            throw new Error('Unknown service: ' + state.currentService);
         }
         
         state.voiceId = voiceId;
@@ -277,40 +285,76 @@ async function createVoiceClone() {
 }
 
 async function createMiniMaxVoice() {
-    // Placeholder - MiniMax API implementation
-    // In real implementation, upload files and get voice_id
     console.log('Creating MiniMax voice...');
     
-    // Simulate API call for now
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return 'minimax_voice_' + Date.now();
-}
-
-async function createElevenLabsVoice() {
-    console.log('Creating ElevenLabs voice...');
-    
-    const formData = new FormData();
-    formData.append('name', 'VoiceVolt_' + Date.now());
+    // Step 1: Upload audio files to MiniMax
+    const fileIds = [];
     
     for (let i = 0; i < state.samples.length; i++) {
-        formData.append('files', state.samples[i], `sample_${i}.webm`);
+        const formData = new FormData();
+        formData.append('file', state.samples[i], `sample_${i}.wav`);
+        
+        console.log(`Uploading sample ${i+1}...`);
+        
+        const uploadResponse = await fetch('https://api.minimax.chat/v1/files/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.apiKey}`
+            },
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            const error = await uploadResponse.text();
+            throw new Error(`Upload failed for sample ${i+1}: ${error}`);
+        }
+        
+        const uploadData = await uploadResponse.json();
+        console.log(`Sample ${i+1} uploaded:`, uploadData);
+        
+        // MiniMax returns file_id in the response
+        if (uploadData.file_id) {
+            fileIds.push(uploadData.file_id);
+        } else if (uploadData.id) {
+            fileIds.push(uploadData.id);
+        } else {
+            throw new Error('Unexpected upload response: ' + JSON.stringify(uploadData));
+        }
     }
     
-    const response = await fetch(`${CONFIG.services.elevenlabs.baseUrl}/voices/add`, {
+    // Step 2: Create voice clone using the uploaded files
+    console.log('Creating voice clone with files:', fileIds);
+    
+    const cloneResponse = await fetch('https://api.minimax.chat/v1/voice_clone', {
         method: 'POST',
         headers: {
-            'xi-api-key': state.apiKey
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.apiKey}`
         },
-        body: formData
+        body: JSON.stringify({
+            voice_name: 'VoiceVolt_' + Date.now(),
+            file_ids: fileIds,
+            // Optional parameters
+            description: 'Cloned voice for Voice Volt app'
+        })
     });
     
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API Error: ${error}`);
+    if (!cloneResponse.ok) {
+        const error = await cloneResponse.text();
+        throw new Error(`Voice clone failed: ${error}`);
     }
     
-    const data = await response.json();
-    return data.voice_id;
+    const cloneData = await cloneResponse.json();
+    console.log('Voice clone created:', cloneData);
+    
+    // Return the voice_id
+    if (cloneData.voice_id) {
+        return cloneData.voice_id;
+    } else if (cloneData.id) {
+        return cloneData.id;
+    } else {
+        throw new Error('Unexpected clone response: ' + JSON.stringify(cloneData));
+    }
 }
 
 // ==================== USE CLONED VOICE ====================
@@ -363,10 +407,14 @@ async function speakWithClone() {
 }
 
 async function generateSpeech(text, options = {}) {
+    console.log('Generating speech with:', state.currentService);
+    
     if (state.currentService === 'minimax') {
         return generateMiniMaxSpeech(text, options);
-    } else {
+    } else if (state.currentService === 'elevenlabs') {
         return generateElevenLabsSpeech(text, options);
+    } else {
+        throw new Error('Unknown service for TTS: ' + state.currentService);
     }
 }
 
@@ -399,11 +447,63 @@ async function generateElevenLabsSpeech(text, options) {
 }
 
 async function generateMiniMaxSpeech(text, options) {
-    // Placeholder for MiniMax TTS
-    console.log('MiniMax TTS:', text);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // Return a dummy URL or implement actual API call
-    throw new Error('MiniMax TTS not fully implemented - use ElevenLabs for now');
+    console.log('MiniMax TTS:', text.substring(0, 50) + '...');
+    
+    const response = await fetch('https://api.minimax.chat/v1/t2a_v2', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'speech-01-turbo',
+            text: text,
+            voice_id: state.voiceId,
+            speed: options.speed || 1.0,
+            // MiniMax uses different emotion mapping
+            emotion: mapEmotionToMiniMax(options.emotion),
+            audio_format: 'mp3'
+        })
+    });
+    
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`MiniMax TTS failed: ${error}`);
+    }
+    
+    const data = await response.json();
+    console.log('MiniMax TTS response:', data);
+    
+    // MiniMax returns audio in data.audio_data (base64) or data.audio_url
+    if (data.audio_data) {
+        const blob = base64ToBlob(data.audio_data, 'audio/mp3');
+        return URL.createObjectURL(blob);
+    } else if (data.audio_url) {
+        return data.audio_url;
+    } else {
+        throw new Error('Unexpected TTS response: ' + JSON.stringify(data));
+    }
+}
+
+function mapEmotionToMiniMax(emotion) {
+    // Map our emotions to MiniMax format
+    const mapping = {
+        'neutral': 'neutral',
+        'happy': 'happy',
+        'sad': 'sad',
+        'angry': 'angry',
+        'excited': 'excited'
+    };
+    return mapping[emotion] || 'neutral';
+}
+
+function base64ToBlob(base64, type) {
+    const binary = atob(base64);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        array[i] = binary.charCodeAt(i);
+    }
+    return new Blob([array], { type: type });
 }
 
 // ==================== SINGING ====================
